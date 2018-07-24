@@ -1,0 +1,69 @@
+	 
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+    <script type="text/javascript" src="mqttws31.js"></script>
+  </head>
+  <body>
+    <div id=status>Disconnected</div>
+    <div style="overflow: auto">
+      <div id="body" style="height: 40%">
+    	
+      </div>
+    </div>
+    <script type="text/javascript">
+
+var options = {
+  host: "broker.mqttdashboard.com",
+  port: 8000,
+  clientID: "web" + new Date().getTime(),
+  connectOpts: {
+    keepAliveInterval: 30,
+    timeout: 10,
+    cleanSession: true,
+    onSuccess: onConnect,
+    onFailure: onFailure
+  }
+}
+
+setup("body");
+
+var client = new Paho.MQTT.Client(options.host,options.port,options.clientID);
+client.onMessageArrived = onMessage;
+client.onconnectionlost = onDisconnect;
+
+function onConnect(){
+  client.subscribe('micropython/test/mpu6050',onMessage);
+  document.getElementById('status').innerHTML= "";
+	console.log("mqtt connected");
+}
+
+function onFailure() {
+  document.getElementById('status').innerHTML = "failed to connect";
+  reconnect();
+}
+
+client.connect(options.connectOpts);
+
+
+function onMessage(message) {
+  console.log(message);
+}
+
+function onDisconnect(reason) {
+	console.log("disconnected - " + reason);
+	//alert("disconnected - " + reason);
+  document.getElementById('status').innerHTML = "Disconnected";
+  reconnect();
+}
+
+function reconnect() {
+  setTimeout(function(){
+    document.getElementById('status').innerHTML = "reconnecting";
+    client.connect(options.connectOpts);
+  },3000);
+}
+    </script>
+  </body>
+</html>

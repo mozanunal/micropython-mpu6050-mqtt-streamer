@@ -7,7 +7,7 @@ import time, json
 
 i2c = I2C(scl=Pin(5), sda=Pin(4))
 accelerometer = mpu6050.accel(i2c)
-c = MQTTClient("asdsdsadsadadsdsa", "iot.eclipse.org")
+c = MQTTClient("test231321434234234", "broker.mqttdashboard.com")
 c.connect()
 
 def run():
