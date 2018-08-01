@@ -1,69 +1,107 @@
-	 
-<!DOCTYPE html>
+<!DOCTYPE HTML>
 <html>
-  <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+
+<head>
     <script type="text/javascript" src="mqttws31.js"></script>
-  </head>
-  <body>
-    <div id=status>Disconnected</div>
-    <div style="overflow: auto">
-      <div id="body" style="height: 40%">
-    	
-      </div>
-    </div>
-    <script type="text/javascript">
+    <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    <script>
+        window.onload = function () {
 
-var options = {
-  host: "broker.mqttdashboard.com",
-  port: 8000,
-  clientID: "web" + new Date().getTime(),
-  connectOpts: {
-    keepAliveInterval: 30,
-    timeout: 10,
-    cleanSession: true,
-    onSuccess: onConnect,
-    onFailure: onFailure
-  }
-}
+            ////////////////////// Mqtt
+            var options = {
+                host: "broker.mqttdashboard.com",
+                port: 8000,
+                clientID: "web" + new Date().getTime(),
+                connectOpts: {
+                    keepAliveInterval: 30,
+                    timeout: 10,
+                    cleanSession: true,
+                    onSuccess: onConnect,
+                    onFailure: onFailure
+                }
+            }
+            var client = new Paho.MQTT.Client(options.host, options.port, options.clientID);
+            client.onMessageArrived = onMessage;
+            client.onconnectionlost = onDisconnect;
 
-setup("body");
+            function onConnect() {
+                client.subscribe('micropython/test/mpu6050', onMessage);
+                document.getElementById('status').innerHTML = "";
+                console.log("mqtt connected");
+            }
 
-var client = new Paho.MQTT.Client(options.host,options.port,options.clientID);
-client.onMessageArrived = onMessage;
-client.onconnectionlost = onDisconnect;
+            function onFailure() {
+                document.getElementById('status').innerHTML = "failed to connect";
+                reconnect();
+            }
+            client.connect(options.connectOpts);
 
-function onConnect(){
-  client.subscribe('micropython/test/mpu6050',onMessage);
-  document.getElementById('status').innerHTML= "";
-	console.log("mqtt connected");
-}
+            function onMessage(message) {
+                var m = JSON.parse(message.payloadString);
+                console.log(m);
+                addData("--", m.GyZ);
+            }
 
-function onFailure() {
-  document.getElementById('status').innerHTML = "failed to connect";
-  reconnect();
-}
+            function onDisconnect(reason) {
+                console.log("disconnected - " + reason);
+                //alert("disconnected - " + reason);
+                document.getElementById('status').innerHTML = "Disconnected";
+                reconnect();
+            }
 
-client.connect(options.connectOpts);
+            function reconnect() {
+                setTimeout(function () {
+                    document.getElementById('status').innerHTML = "reconnecting";
+                    client.connect(options.connectOpts);
+                }, 3000);
+            }
 
+            ////////////////////// Chart
+            var listAccX = [];
+            var listAccY = [];
+            var listAccZ = [];
+            var chart = new CanvasJS.Chart("accChartId", {
+                title: {
+                    text: "Accerlerometer XYZ"
+                },
+                axisY: {
+                    includeZero: false
+                },
+                data: [
+                  {
+                    name: "Acc X",
+                    type: "line",
+                    dataPoints: listAccX
+                  },
+                ]
+            });
+            var xVal = 0;
+            var dataLength = 100; // number of dataPoints visible at any point
+            var addData = function (chartId, data) {
+                dps.push({
+                    x: xVal,
+                    y: data
+                });
+                xVal++;
+                if (dps.length > dataLength) {
+                    dps.shift();
+                }
 
-function onMessage(message) {
-  console.log(message);
-}
+                chart.render();
+            };
 
-function onDisconnect(reason) {
-	console.log("disconnected - " + reason);
-	//alert("disconnected - " + reason);
-  document.getElementById('status').innerHTML = "Disconnected";
-  reconnect();
-}
-
-function reconnect() {
-  setTimeout(function(){
-    document.getElementById('status').innerHTML = "reconnecting";
-    client.connect(options.connectOpts);
-  },3000);
-}
+        }
     </script>
-  </body>
+</head>
+
+<body>
+    <div id=status>Disconnected</div>
+    <div>
+        <div id="accChartId" style="height: 370px; width:100%;"></div>
+    </div>
+    <div>
+        <div id="gyroChartId" style="height: 370px; width:100%;"></div>
+    </div>
+</body>
+
 </html>
