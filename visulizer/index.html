@@ -9,25 +9,25 @@
 
             ////////////////////// Mqtt
             var options = {
-                host: "broker.mqttdashboard.com",
-                port: 8000,
+                host: "iot.eclipse.org",
+                port: 443,
                 clientID: "web" + new Date().getTime(),
                 connectOpts: {
                     keepAliveInterval: 30,
                     timeout: 10,
                     cleanSession: true,
                     onSuccess: onConnect,
-                    onFailure: onFailure
+                    onFailure: onFailure,
+                    useSSL: true,
                 }
             }
-            var client = new Paho.MQTT.Client(options.host, options.port, options.clientID);
+            var client = new Paho.MQTT.Client(options.host, options.port, "/ws", options.clientID);
             client.onMessageArrived = onMessage;
             client.onconnectionlost = onDisconnect;
 
             function onConnect() {
-                client.subscribe('micropython/test/mpu6050', onMessage);
-                document.getElementById('status').innerHTML = "";
-                console.log("mqtt connected");
+                document.getElementById('status').innerHTML = "mqtt connected";
+                client.subscribe("/acc/data/deneme", {qos:1});
             }
 
             function onFailure() {
@@ -36,15 +36,8 @@
             }
             client.connect(options.connectOpts);
 
-            function onMessage(message) {
-                var m = JSON.parse(message.payloadString);
-                console.log(m);
-                addData("--", m.GyZ);
-            }
-
             function onDisconnect(reason) {
                 console.log("disconnected - " + reason);
-                //alert("disconnected - " + reason);
                 document.getElementById('status').innerHTML = "Disconnected";
                 reconnect();
             }
@@ -54,6 +47,13 @@
                     document.getElementById('status').innerHTML = "reconnecting";
                     client.connect(options.connectOpts);
                 }, 3000);
+            }
+
+
+            function onMessage(message) {
+                var m = JSON.parse(message.payloadString);
+                //console.log(m);
+                addData("accChartId", m);
             }
 
             ////////////////////// Chart
@@ -68,25 +68,40 @@
                     includeZero: false
                 },
                 data: [
-                  {
-                    name: "Acc X",
-                    type: "line",
-                    dataPoints: listAccX
-                  },
+                    {
+                        name: "Acc X",
+                        type: "line",
+                        dataPoints: listAccX
+                    },
+                    {
+                        name: "Acc Y",
+                        type: "line",
+                        dataPoints: listAccY
+                    },
+                    {
+                        name: "Acc Z",
+                        type: "line",
+                        dataPoints: listAccZ
+                    },
                 ]
             });
-            var xVal = 0;
+
+
             var dataLength = 100; // number of dataPoints visible at any point
             var addData = function (chartId, data) {
-                dps.push({
-                    x: xVal,
-                    y: data
-                });
-                xVal++;
-                if (dps.length > dataLength) {
-                    dps.shift();
+                //console.log(data);
+                for (let index = 0; index < data.idx.length; index++) {
+                    listAccX.push({ x: data.idx[index], y: data.accX[index] });
+                    listAccY.push({ x: data.idx[index], y: data.accY[index] });
+                    listAccZ.push({ x: data.idx[index], y: data.accZ[index] });
                 }
-
+                if (listAccX.length > dataLength) {
+                    for (let index = 0; index < listAccX.length - dataLength; index++) {
+                        listAccX.shift();
+                        listAccY.shift();
+                        listAccZ.shift();
+                    }
+                }
                 chart.render();
             };
 

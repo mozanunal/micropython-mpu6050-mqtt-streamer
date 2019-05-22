@@ -1,0 +1,108 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <script type="text/javascript" src="mqttws31.js"></script>
+    <script>
+
+        var connected = false;
+        function console_log(a) {
+            document.getElementById('error').innerHTML += '</br> ' + a;
+        }
+
+        ////////////////////// Mqtt
+        var options = {
+            host: "iot.eclipse.org",
+            port: 443,
+            clientID: "web" + new Date().getTime(),
+            connectOpts: {
+                keepAliveInterval: 30,
+                timeout: 10,
+                cleanSession: true,
+                onSuccess: onConnect,
+                onFailure: onFailure,
+                useSSL: true,
+            }
+        }
+
+        function onConnect() {
+            document.getElementById('status').innerHTML = "mqtt connected";
+            connected = true;
+        }
+
+        function onFailure() {
+            document.getElementById('status').innerHTML = "failed to connect";
+            reconnect();
+        }
+
+        function onDisconnect(reason) {
+            console.log("disconnected - " + reason);
+            //alert("disconnected - " + reason);
+            document.getElementById('status').innerHTML = "Disconnected";
+            connected = false;
+            reconnect();
+
+        }
+
+        function reconnect() {
+            setTimeout(function () {
+                document.getElementById('status').innerHTML = "reconnecting";
+                mqClient.connect(options.connectOpts);
+            }, 3000);
+        }
+
+        var mqClient = new Paho.MQTT.Client(options.host, options.port, "/ws", options.clientID);
+        mqClient.onconnectionlost = onDisconnect;
+        mqClient.connect(options.connectOpts);
+
+        var accelerometer = new Accelerometer({ frequency: 15 });
+        var buffer = {
+            accX: [],
+            accY: [],
+            accZ: [],
+            idx: []
+        };
+        var counter = 0;
+        accelerometer.addEventListener('reading', e => {
+            if (connected == true) {
+                buffer.accX.push(accelerometer.x);
+                buffer.accY.push(accelerometer.y);
+                buffer.accZ.push(accelerometer.z);
+                buffer.idx.push(counter);
+                counter += 1;
+                if (counter % 5 == 0) {
+                    try {
+                        var jsonString = JSON.stringify(buffer);
+                        mqClient.send("/acc/data/deneme", jsonString, 0, false);
+                    } catch (error) {
+                        console_log(error);
+                    }
+                    buffer = {
+                        accX: [],
+                        accY: [],
+                        accZ: [],
+                        idx: []
+                    };
+                }
+
+            }
+            document.getElementById('values').innerHTML = "data- " + accelerometer.x + " " + accelerometer.y + " " + accelerometer.z;
+        });
+        accelerometer.start();
+
+    </script>
+</head>
+
+<body>
+    <div id="status">Disconnected</div></br>
+    <div id="error"></div></br>
+    <div id="values"></div></br>
+    <div>
+        <div id="accChartId" style="height: 370px; width:100%;"></div>
+    </div>
+    <div>
+        <div id="gyroChartId" style="height: 370px; width:100%;"></div>
+    </div>
+</body>
+
+</html>
