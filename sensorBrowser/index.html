@@ -55,7 +55,7 @@
         mqClient.onconnectionlost = onDisconnect;
         mqClient.connect(options.connectOpts);
 
-        var accelerometer = new Accelerometer({ frequency: 15 });
+        var accelerometer = new Accelerometer({ frequency: 50 });
         var buffer = {
             accX: [],
             accY: [],
@@ -70,10 +70,12 @@
                 buffer.accZ.push(accelerometer.z);
                 buffer.idx.push(counter);
                 counter += 1;
-                if (counter % 5 == 0) {
+                if (counter % 20 == 0) {
                     try {
                         var jsonString = JSON.stringify(buffer);
-                        mqClient.send("/acc/data/deneme", jsonString, 0, false);
+                        mqClient.send("micropython/test/mpu6050", jsonString, 0, false);
+
+                        
                     } catch (error) {
                         console_log(error);
                     }
