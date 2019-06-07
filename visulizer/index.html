@@ -2,15 +2,15 @@
 <html>
 
 <head>
-    <script type="text/javascript" src="mqttws31.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
     <script>
         window.onload = function () {
 
             ////////////////////// Mqtt
             var options = {
-                host: "iot.eclipse.org",
-                port: 443,
+                host: "broker.mqttdashboard.com",
+                port: 8000,
                 clientID: "web" + new Date().getTime(),
                 connectOpts: {
                     keepAliveInterval: 30,
@@ -18,16 +18,16 @@
                     cleanSession: true,
                     onSuccess: onConnect,
                     onFailure: onFailure,
-                    useSSL: true,
+                    useSSL: false,
                 }
             }
-            var client = new Paho.MQTT.Client(options.host, options.port, "/ws", options.clientID);
+            var client = new Paho.MQTT.Client(options.host, options.port, options.clientID);
             client.onMessageArrived = onMessage;
             client.onconnectionlost = onDisconnect;
 
             function onConnect() {
                 document.getElementById('status').innerHTML = "mqtt connected";
-                client.subscribe("/acc/data/deneme", {qos:1});
+                client.subscribe("micropython/test/mpu6050", {qos:0});
             }
 
             function onFailure() {
@@ -52,7 +52,7 @@
 
             function onMessage(message) {
                 var m = JSON.parse(message.payloadString);
-                //console.log(m);
+                console.log(m);
                 addData("accChartId", m);
             }
 
@@ -60,7 +60,11 @@
             var listAccX = [];
             var listAccY = [];
             var listAccZ = [];
-            var chart = new CanvasJS.Chart("accChartId", {
+            var listGyX = [];
+            var listGyY = [];
+            var listGyZ = [];
+
+            var chartAcc = new CanvasJS.Chart("accChartId", {
                 title: {
                     text: "Accerlerometer XYZ"
                 },
@@ -86,23 +90,57 @@
                 ]
             });
 
+            var chartGy = new CanvasJS.Chart("gyroChartId", {
+                title: {
+                    text: "Gyro XYZ"
+                },
+                axisY: {
+                    includeZero: false
+                },
+                data: [
+                    {
+                        name: "Gyro X",
+                        type: "line",
+                        dataPoints: listGyX
+                    },
+                    {
+                        name: "Gyro Y",
+                        type: "line",
+                        dataPoints: listGyY
+                    },
+                    {
+                        name: "Gyro Z",
+                        type: "line",
+                        dataPoints: listGyZ
+                    },
+                ]
+            });
 
-            var dataLength = 100; // number of dataPoints visible at any point
+            var dataLength = 250; // number of dataPoints visible at any point
             var addData = function (chartId, data) {
                 //console.log(data);
-                for (let index = 0; index < data.idx.length; index++) {
-                    listAccX.push({ x: data.idx[index], y: data.accX[index] });
-                    listAccY.push({ x: data.idx[index], y: data.accY[index] });
-                    listAccZ.push({ x: data.idx[index], y: data.accZ[index] });
-                }
+                listAccX.push({ x: data.idx, y: data.accX });
+                listAccY.push({ x: data.idx, y: data.accY });
+                listAccZ.push({ x: data.idx, y: data.accZ });
+                
+                listGyX.push({ x: data.idx, y: data.gyX });
+                listGyY.push({ x: data.idx, y: data.gyY });
+                listGyZ.push({ x: data.idx, y: data.gyZ });
+
+
                 if (listAccX.length > dataLength) {
                     for (let index = 0; index < listAccX.length - dataLength; index++) {
                         listAccX.shift();
                         listAccY.shift();
                         listAccZ.shift();
+
+                        listGyX.shift();
+                        listGyY.shift();
+                        listGyZ.shift();
                     }
                 }
-                chart.render();
+                chartAcc.render();
+                chartGy.render();
             };
 
         }
